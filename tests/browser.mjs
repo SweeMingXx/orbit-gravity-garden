@@ -1,3 +1,4 @@
+process.on('uncaughtExceptionMonitor', e => console.log('::error::'+String(e.stack).replaceAll('%','%25').replaceAll('\n','%0A').replaceAll('\r','%0D')));
 import { chromium } from 'playwright';
 import AxeBuilder from '@axe-core/playwright';
 import assert from 'node:assert/strict';
@@ -6,7 +7,11 @@ import { readFile, mkdir, writeFile } from 'node:fs/promises';
 
 await mkdir('test-results', { recursive: true });
 const html = await readFile('index.html');
-const server = createServer((req,res) => { res.writeHead(200, {'Content-Type':'text/html; charset=utf-8'}); res.end(html); });
+const server = createServer(async (req,res) => {
+ const name = new URL(req.url, 'http://localhost').pathname;
+ if(name === '/styles.css' || name === '/app.js') { res.writeHead(200, {'Content-Type':name.endsWith('.css')?'text/css':'text/javascript'});res.end(await readFile('.'+name)); }
+ else { res.writeHead(200, {'Content-Type':'text/html; charset=utf-8'});res.end(html); }
+});
 await new Promise(resolve => server.listen(4173, '127.0.0.1', resolve));
 const browser = await chromium.launch();
 const errors = [];
@@ -32,9 +37,9 @@ try {
  check('Pause updates system status', await page.locator('#liveLabel').innerText() === 'PAUSED');
  await page.locator('#play').click();
  await page.locator('[data-palette="aurora"]').click();
- await page.locator('#gravity').fill('1.4');
+ await page.locator('#gravity').evaluate(e => e.value = '1.4');
  await page.locator('#gravity').dispatchEvent('input');
- await page.locator('#speed').fill('0.8');
+ await page.locator('#speed').evaluate(e => e.value = '0.8');
  await page.locator('#speed').dispatchEvent('input');
  check('Gravity output updates', await page.locator('#gravityOut').innerText() === '1.4×');
  await page.reload();

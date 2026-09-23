@@ -16,7 +16,7 @@ An original, responsive interactive artwork built with Canvas 2D, Web Audio, and
 Reduced-motion preferences start the simulation paused. Native dialogs, visible focus states, keyboard alternatives, reset confirmations, limits, and status messages support accessible interaction. Optional Google Fonts have system-font fallbacks. Settings and launch conditions persist locally; audio requires an explicit user gesture. Shared links recreate initial conditions, not exact animation frames. Illustrative softened-gravity physics, not an astronomical model.
 
 ## Development
-Serve this directory with any static HTTP server. `index.html` contains the complete application. `.nojekyll` enables direct static publishing.
+Serve this directory with any static HTTP server. `index.html`, `styles.css`, and `app.js` contain the complete application. `.nojekyll` enables direct static publishing.
 
 ## Verification
 `npm install` then `npx playwright install chromium` and `npm test` runs desktop/mobile interaction, accessibility, persistence, sharing, keyboard, download, and reduced-motion checks. GitHub Actions runs these checks and uploads screenshots.
