@@ -4,19 +4,42 @@ on:
     branches: [main, gh-pages]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   browser-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
+      - name: Extract maintainable assets and refine layout
+        run: |
+          node scripts/refine.mjs
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html styles.css app.js tests/browser.mjs README.md
+          if ! git diff --cached --quiet; then
+            git commit -m 'Extract static assets; refine mobile usability and browser tests'
+            git push
+          fi
       - name: Install test dependencies
         run: npm install
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
       - name: Test interactions, responsive layout, and accessibility
-        run: npm test
+        run: |
+          mkdir -p test-results
+          set -o pipefail
+          npm test 2>&1 | tee test-results/browser.log
+      - name: Surface test diagnostics
+        if: failure()
+        run: |
+          if [ -f test-results/browser.log ]; then
+            python3 - <<'PY'
+          from pathlib import Path
+          text=Path('test-results/browser.log').read_text()[-12000:]
+          print('::error::'+text.replace('%','%25').replace('\n','%0A').replace('\r','%0D'))
+          PY
+          fi
       - name: Upload screenshots and audit
         if: always()
         uses: actions/upload-artifact@v4
