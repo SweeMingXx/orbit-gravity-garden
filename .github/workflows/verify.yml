@@ -1,0 +1,25 @@
+name: Verify ORBIT
+on:
+  push:
+    branches: [main, gh-pages]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install test dependencies
+        run: npm install
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Test interactions, responsive layout, and accessibility
+        run: npm test
+      - name: Upload screenshots and audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orbit-browser-verification
+          path: test-results/
