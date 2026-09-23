@@ -96,7 +96,7 @@ try {
  check('Reset returns to six planets', await page.locator('#count').innerText() === '6');
  for(let i=0;i<18;i++) await page.locator('#launch').click();
  check('Planet limit prevents excess launches', await page.locator('#count').innerText() === '24' && await page.locator('#launch').isDisabled());
- await page.goto(base+'#not-valid-json');
+ await page.goto(base+'?invalid-share-test=1#not-valid-json');
  check('Malformed share recovers safely', await page.locator('#count').innerText() === '6');
  await page.evaluate(() => localStorage.setItem('orbit-garden-v1','invalid'));
  await page.goto(base);
