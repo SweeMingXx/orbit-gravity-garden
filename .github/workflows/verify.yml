@@ -1,0 +1,68 @@
+name: Verify ORBIT
+on:
+  push:
+    branches: [main, gh-pages]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  browser-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install test dependencies
+        run: npm install
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Test interactions, responsive layout, and accessibility
+        run: |
+          mkdir -p test-results
+          set -o pipefail
+          npm test 2>&1 | tee test-results/browser.log
+      - name: Verify live Pages content matches published source
+        if: github.ref == 'refs/heads/gh-pages'
+        run: |
+          node --input-type=module - <<'JS'
+          import fs from 'node:fs/promises';
+          const base='https://sweemingxx.github.io/orbit-gravity-garden/';
+          const files=['index.html','styles.css','app.js'];
+          let success=false;
+          for(let attempt=0;attempt<24;attempt++) {
+            try {
+              const matches=await Promise.all(files.map(async name=>{
+                const response=await fetch(base+name+'?verify='+Date.now());
+                return response.ok && await response.text()===await fs.readFile(name,'utf8');
+              }));
+              if(matches.every(Boolean)){success=true;break;}
+            }catch{}
+            await new Promise(r=>setTimeout(r,5000));
+          }
+          if(!success)throw Error('Live Pages assets did not match this checkout within 120 seconds');
+          console.log('::notice::LIVE VERIFIED: HTTP 200 and exact source match for index.html, styles.css, app.js at '+base);
+          JS
+      - name: Run browser suite against the live website
+        if: github.ref == 'refs/heads/gh-pages'
+        env:
+          SITE_URL: https://sweemingxx.github.io/orbit-gravity-garden/
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee test-results/live-browser.log
+      - name: Surface test diagnostics
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          for path in Path('test-results').glob('*.log'):
+            text=path.read_text()[-12000:]
+            print('::error::'+text.replace('%','%25').replace('\n','%0A').replace('\r','%0D'))
+          PY
+      - name: Upload screenshots and audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orbit-browser-verification
+          path: test-results/
